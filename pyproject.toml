@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qrcode-gui"
+version = "0.1.0"
+description = "QR code generator and webcam scanner for Linux desktops"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=10,<13", "qrcode>=8,<9", "opencv-python-headless>=4.10,<5"]
+
+[project.scripts]
+qrcode-gui = "qrcode_gui.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
