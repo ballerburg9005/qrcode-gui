@@ -207,8 +207,8 @@ class QRCodeApp:
         ).grid(row=7, column=0, sticky="ew", pady=(5, 0))
 
     def generate(self, event=None):
-        content = self.text.get("1.0", "end-1c").strip()
-        if not content:
+        content = self.text.get("1.0", "end-1c")
+        if not content.strip():
             messagebox.showwarning("No content", "Enter text or a URL.")
             return "break"
         try:
@@ -324,6 +324,12 @@ class QRCodeApp:
                 self.reconnect_attempts += 1
                 attempt = self.reconnect_attempts
                 self.stop_camera(message=f"Lost camera frames. Reconnecting ({attempt}/3)…")
+                if attempt == 2 and self.selected_resolution.get() != "Default":
+                    # Some drivers initially accept HD but stop streaming later.
+                    self.selected_resolution.set("Default")
+                    self.camera_status.configure(
+                        text="HD stream unstable; retrying the driver's default mode."
+                    )
                 if attempt <= 3:
                     self.camera_after_id = self.root.after(
                         650, lambda: self.start_camera(retry=True)
@@ -429,7 +435,7 @@ class QRCodeApp:
         self.camera_status.configure(text=f"Decoded QR from {os.path.basename(filename)}")
 
     def get_scan_result(self):
-        return self.scan_result.get("1.0", "end-1c").strip()
+        return self.scan_result.get("1.0", "end-1c")
 
     def clear_scan_result(self):
         self.scan_result.delete("1.0", "end")
