@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=QR Code GUI
-Comment=Generate and scan QR codes locally
+Name=QR Code Studio
+Comment=Create QR codes and scan dense codes offline
 Exec=qrcode-gui
-Icon=applications-graphics
+Icon=${SNAP}/meta/gui/qrcode-gui.svg
 Terminal=false
 Type=Application
 Categories=Graphics;Utility;

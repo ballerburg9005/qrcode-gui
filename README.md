@@ -1,15 +1,25 @@
-# QR Code GUI
+# QR Code Studio
 
-A desktop QR-code generator and webcam/image scanner for Ubuntu 24.04 and other Linux desktops.
+Local QR generator and webcam/image scanner for Ubuntu 24.04, built with Tkinter.
+Everything stays on your computer: no cloud scanning, tracking, or login.
 
-- Generate a QR code from any text or URL, preview it, and save it as PNG.
-- Decode QR codes from a webcam or image file, copy results, or use them as input.
-- Choose a video device, try Linux V4L2 first, and recover from lost webcam frames.
-- All scanning and generation happens locally. The camera is only opened when you press **Start Camera**.
+## Improvements in v0.2.0
 
-## Install and run on Ubuntu 24.04
+- **Dense QR codes:** ZXing-C++ decoder, with OpenCV fallback and contrast enhancement.
+- **Higher resolution:** selectable driver default, HD 1280×720 or Full HD 1920×1080.
+  The scanner decodes the **original full-resolution frames**, not the smaller on-screen preview.
+- **Responsive scanning:** decode work runs in a single background worker; the window doesn't
+  hang during complex QR decoding.
+- **Cleaner interface:** two panels, better styling, input **and** output vertical scrollbars,
+  image scanning, copy / paste-into-generator, and PNG export.
+- **Snap packaging:** an application icon, a correctly located desktop launcher,
+  the Python/Tk/OpenCV/ZXing dependencies, and strict confinement.
 
-This is currently **source code and an untested Snap package recipe**, not a released Store app.
+Dense codes still depend on the camera's physical resolution, focus, exposure and contrast.
+For complex symbols use **Full HD**, bring the QR into a large portion of the frame without
+cutting off the border, hold the camera steady, and avoid glare/reflections.
+
+## Install from source: Ubuntu 24.04
 
 ```bash
 sudo apt update
@@ -22,13 +32,17 @@ python3 -m venv .venv
 .venv/bin/qrcode-gui
 ```
 
-You do not need the external `qrcode` command or the EOG image viewer. Dependencies (Pillow, qrcode, OpenCV and its Python dependencies) are installed by pip in the isolated virtual environment.
+This installs Python dependencies (Pillow, qrcode, OpenCV, ZXing-C++) into a local virtual
+environment. No external `qrcode` executable or EOG is required.
 
 Run tests with `.venv/bin/python -m unittest discover -s tests -v`.
 
-## Build and install the Snap
+## Build/test the Ubuntu Snap
 
-The package targets `core24`, bundles the Python libraries and Tk runtime, and uses strict confinement. Install/configure **Snapcraft and LXD** first.
+`snap/snapcraft.yaml` uses `core24`, strict confinement, a desktop launcher and an
+app icon. It **has not yet been published to the Snap Store**.
+
+On a host with Snapcraft + LXD configured:
 
 ```bash
 snapcraft
@@ -37,45 +51,47 @@ sudo snap connect qrcode-gui:camera
 snap run qrcode-gui
 ```
 
-Camera permission is not automatically connected. **Every user must connect it manually unless the Snap Store grants an auto-connection request:**
+Or open [GitHub Actions](https://github.com/ballerburg9005/qrcode-gui/actions),
+select a successful **Test and build Snap** run, download `qrcode-gui-snap`, unzip,
+then install the `.snap` with `sudo snap install --dangerous <file.snap>`.
+
+**Camera access is not auto-connected by default:** if the preview doesn't open, run
+`snap connections qrcode-gui` and `sudo snap connect qrcode-gui:camera`.
+The home plug permits ordinary files in your home directory, but strict Snap confinement
+can prevent reading arbitrary system paths.
+
+For some USB webcams `/dev/video0` is not the imaging node (a second node might carry
+metadata). Refresh the camera list and try another device. If frames drop after
+requesting Full HD, select **Default** or **HD** and restart the camera.
+
+If all camera modes fail:
 
 ```bash
+ls -l /dev/video*
+sudo fuser -v /dev/video0
 snap connections qrcode-gui
-sudo snap connect qrcode-gui:camera
 ```
 
-GitHub Actions attempts to build the Snap on every push to `main`, as well as manually. After a successful run, download the `qrcode-gui-snap` workflow artifact, extract its .snap file, and test it before distributing it.
+Also try the **Scan Image** button for a QR saved as PNG/JPG.
 
-## Troubleshooting: Unable to read webcam frame
+## Release checklist (not yet published)
 
-The original script requested 1280x720 and a one-frame capture buffer after opening the webcam. Some V4L2 drivers stop providing frames after such a mode change. This version **does not change the camera mode**, probes actual frames, tries both V4L2 and the default OpenCV backend, and attempts limited reconnection if frames stop arriving.
+1. Confirm the Snap build workflow succeeds on Ubuntu 24.04.
+2. Install and test it on a physical webcam, including dense QR symbols.
+3. Register an available Snap name at https://snapcraft.io/register.
+4. Add screenshots and publisher/contact details to the Snap Store listing.
+5. Once validated, set `grade: stable`; upload and release using Snapcraft
+   credentials on the publisher's machine or configured store-publishing workflow.
 
-If no camera works:
+This repository does **not** contain publisher credentials or publish automatically.
+For strict-confinement camera access users must connect the `camera` plug unless
+automatic connection is approved.
 
-1. Close Zoom, Cheese, browsers, and other applications that may own the webcam.
-2. Run `ls -l /dev/video*`. In the app select an explicit device such as `/dev/video0` or `Camera 0`. Some /dev/videoN entries are metadata-only nodes.
-3. Verify that the camera works in another application such as Cheese.
-4. For a Snap install, run `sudo snap connect qrcode-gui:camera`.
-5. Diagnose competing processes with `sudo fuser -v /dev/video0` (adjust the device).
-6. Launch from the terminal to view OpenCV warnings: `snap run qrcode-gui` or `.venv/bin/qrcode-gui`.
+## Layout
 
-Use **Scan Image** to decode QR codes from a picture even when the webcam is unavailable.
-
-## Snap Store release checklist (not published yet)
-
-- Register `qrcode-gui` (if available) at https://snapcraft.io/register.
-- Verify that the Snap actually builds and launches on Ubuntu 24.04 and test real cameras.
-- Create an appropriate icon, screenshots, and listing/support information.
-- After testing, change `grade: devel` to `grade: stable` in `snap/snapcraft.yaml`.
-- Log in with `snapcraft login`, upload with `snapcraft upload <your.snap>`, and release to a suitable channel.
-
-Store names are globally unique; if `qrcode-gui` is already registered, choose another name in the Snap config. Releases should not be automated before the Snap is tested and registered.
-
-## Structure
-
-- `src/qrcode_gui/app.py`: Tkinter interface and QR scanning loop
-- `src/qrcode_gui/camera.py`: webcam discovery and backend fallbacks
-- `src/qrcode_gui/qr.py`: QR generation without external commands
-- `snap/snapcraft.yaml`: Snapcraft package
-- `.github/workflows/build.yml`: Python tests and Snap build
-- `tests/`: basic offline unit tests
+- `src/qrcode_gui/app.py`: UI, preview and background scanning
+- `src/qrcode_gui/decoder.py`: ZXing and OpenCV decoders
+- `src/qrcode_gui/camera.py`: V4L2 device selection / resolution fallback
+- `src/qrcode_gui/qr.py`: local QR generation
+- `snap/`: core24 Snap and desktop metadata
+- `.github/workflows/build.yml`: automated tests and Snap build

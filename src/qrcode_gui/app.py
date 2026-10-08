@@ -404,7 +404,8 @@ class QRCodeApp:
                 raise ValueError("This file is not a supported image.")
             self.camera_status.configure(text="Decoding selected image…")
             self.image_future = self.decode_pool.submit(decode_qr, frame)
-            self.root.after(90, lambda: self.poll_image_decode(filename, self.image_future))
+            future = self.image_future
+            self.root.after(90, lambda: self.poll_image_decode(filename, future))
         except (OSError, ValueError, cv2.error) as exc:
             messagebox.showerror("Cannot read image", str(exc))
 
