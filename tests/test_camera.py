@@ -21,6 +21,9 @@ class FakeCapture:
             return False, None
         return self.frames.pop(0)
 
+    def set(self, prop, value):
+        return True
+
     def release(self):
         self.released = True
 
@@ -28,6 +31,8 @@ class FakeCapture:
 class FakeCV:
     CAP_V4L2 = 200
     CAP_ANY = 0
+    CAP_PROP_FRAME_WIDTH = 3
+    CAP_PROP_FRAME_HEIGHT = 4
 
     def __init__(self, captures):
         self.captures = list(captures)
@@ -52,6 +57,15 @@ class CameraTests(unittest.TestCase):
         self.assertIsNone(error)
         self.assertTrue(broken.released)
         self.assertFalse(working.released)
+
+    def test_high_resolution_falls_back_to_default(self):
+        # Requested Full HD mode fails all probes; default camera mode works.
+        bad = FakeCapture([(False, None)] * 6)
+        good = FakeCapture([(True, FakeFrame())])
+        cap, _, err = open_camera(FakeCV([bad, good]), "Camera 0", "Full HD 1920x1080")
+        self.assertIs(cap, good)
+        self.assertIsNone(err)
+        self.assertTrue(bad.released)
 
     def test_no_camera_import(self):
         capture, device, error = open_camera(None)
