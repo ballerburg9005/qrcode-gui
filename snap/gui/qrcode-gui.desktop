@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=QR Code GUI
+Comment=Generate and scan QR codes locally
+Exec=qrcode-gui
+Icon=applications-graphics
+Terminal=false
+Type=Application
+Categories=Graphics;Utility;
+Keywords=QR;Barcode;Camera;Scanner;

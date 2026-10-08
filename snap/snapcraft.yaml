@@ -1,0 +1,38 @@
+name: qrcode-gui
+base: core24
+version: '0.1.0'
+summary: Local QR code generator and webcam scanner
+description: |
+  Generate and save QR codes, scan QR codes with a Linux webcam or image,
+  and copy the decoded results. Works without accounts or cloud services.
+grade: devel
+confinement: strict
+
+apps:
+  qrcode-gui:
+    command: bin/qrcode-gui
+    desktop: snap/gui/qrcode-gui.desktop
+    plugs:
+      - camera
+      - x11
+      - desktop
+      - desktop-legacy
+      - home
+    environment:
+      TCL_LIBRARY: $SNAP/usr/share/tcltk/tcl8.6
+      TK_LIBRARY: $SNAP/usr/share/tcltk/tk8.6
+      PYTHONPATH: $SNAP/usr/lib/python3.12:$SNAP/usr/lib/python3.12/lib-dynload:$SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
+
+parts:
+  qrcode-gui:
+    plugin: python
+    source: .
+    stage-packages:
+      - python3-tk
+      - tcl8.6
+      - tk8.6
+      - libx11-6
+      - libxext6
+      - libxrender1
+      - libsm6
+      - libice6
