@@ -6,12 +6,17 @@ Everything stays on your computer: no cloud scanning, tracking, or login.
 ## Improvements in v0.2.0
 
 - **Dense QR codes:** ZXing-C++ decoder, with OpenCV fallback and contrast enhancement.
-- **Higher resolution:** selectable driver default, HD 1280×720 or Full HD 1920×1080.
-  The scanner decodes the **original full-resolution frames**, not the smaller on-screen preview.
+- **Higher frame-rate default:** auto mode prefers 60 FPS at 1280×720 or 640×480,
+  falling back to 30 FPS or other usable driver settings when necessary. Captured frames
+  smaller than **640×480 are rejected**. Driver support determines the actual FPS.
+  Manual VGA, HD, Full HD, and driver-default modes remain available.
+  The scanner decodes **original full-resolution frames**, not the smaller preview.
 - **Responsive scanning:** decode work runs in a single background worker; the window doesn't
   hang during complex QR decoding.
-- **Cleaner interface:** two panels, better styling, input **and** output vertical scrollbars,
-  image scanning, copy / paste-into-generator, and PNG export.
+- **Cleaner interface:** responsive, never-cropped QR preview aligned below the buttons,
+  no generator status strip, input **and** output scrollbars, image scanning, and PNG export.
+  Live scanning continues until manually stopped; the scanner shows the **last scan date
+  and time with seconds**.
 - **Snap packaging:** an application icon, a correctly located desktop launcher,
   the Python/Tk/OpenCV/ZXing dependencies, and strict confinement.
 
@@ -62,7 +67,7 @@ can prevent reading arbitrary system paths.
 
 For some USB webcams `/dev/video0` is not the imaging node (a second node might carry
 metadata). Refresh the camera list and try another device. If frames drop after
-requesting Full HD, select **Default** or **HD** and restart the camera.
+requesting Full HD, choose **High FPS (auto)** or **HD** and restart the camera.
 
 If all camera modes fail:
 
