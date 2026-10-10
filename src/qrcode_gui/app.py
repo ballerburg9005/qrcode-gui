@@ -1,6 +1,7 @@
 """QR generator and webcam/image scanner using Tkinter."""
 import os
 import time
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -40,9 +41,8 @@ class QRCodeApp:
         self.last_decode_at = 0.0
         self.image_future = None
         self.closing = False
-        self.stop_after_scan = tk.BooleanVar(value=True)
         self.selected_camera = tk.StringVar(value="Automatic")
-        self.selected_resolution = tk.StringVar(value="Full HD 1920x1080")
+        self.selected_resolution = tk.StringVar(value="High FPS (auto)")
         self.build_ui()
         root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -117,17 +117,19 @@ class QRCodeApp:
         input_scroll.grid(row=0, column=1, sticky="ns")
         self.text.configure(yscrollcommand=input_scroll.set)
         row = ttk.Frame(left)
-        row.grid(row=2, column=0, sticky="ew", pady=9)
+        row.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(row, text="Generate QR", command=self.generate,
                    style="Accent.TButton").pack(side="left", padx=(0, 6))
         ttk.Button(row, text="Save PNG", command=self.save_png).pack(side="left", padx=6)
         ttk.Button(row, text="Clear", command=self.clear_generator).pack(side="left", padx=6)
-        self.qr_label = ttk.Label(
-            left, text="Generated QR code will appear here", anchor="center"
+        # A canvas has a stable layout size regardless of the rendered image.
+        # Refit the QR to its *actual* space, not a fixed 500px guess.
+        self.qr_canvas = tk.Canvas(
+            left, background="#ffffff", width=1, height=1,
+            borderwidth=0, highlightthickness=0,
         )
-        self.qr_label.grid(row=3, column=0, sticky="nsew")
-        self.status = ttk.Label(left, text="Ctrl+Enter to generate", anchor="w")
-        self.status.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        self.qr_canvas.grid(row=3, column=0, sticky="nsew")
+        self.qr_canvas.bind("<Configure>", self.update_qr_preview)
         self.text.bind("<Control-Return>", self.generate)
         self.text.focus_set()
 
@@ -188,10 +190,6 @@ class QRCodeApp:
             options_row, textvariable=self.selected_resolution,
             values=list(RESOLUTIONS), state="readonly", width=20,
         ).pack(side="left", padx=(0, 10))
-        ttk.Checkbutton(
-            options_row, text="Stop after scan", variable=self.stop_after_scan
-        ).pack(side="left")
-
         self.camera_label = ttk.Label(
             right, text="Press Start Camera or Scan Image", anchor="center"
         )
@@ -200,11 +198,33 @@ class QRCodeApp:
             right, text="Camera is off", anchor="w", wraplength=480
         )
         self.camera_status.grid(row=5, column=0, sticky="ew", pady=(8, 0))
-        ttk.Label(
-            right,
-            text="For dense codes, use Full HD, fill more of the frame and avoid glare.",
-            foreground="#64748b", wraplength=490,
-        ).grid(row=7, column=0, sticky="ew", pady=(5, 0))
+        self.scan_timestamp = ttk.Label(
+            right, text="Last scan: —", foreground="#64748b",
+        )
+        self.scan_timestamp.grid(row=7, column=0, sticky="ew", pady=(5, 0))
+
+    def update_qr_preview(self, event=None):
+        """Render into the currently available area; never crop the QR."""
+        width = max(1, event.width if event else self.qr_canvas.winfo_width())
+        height = max(1, event.height if event else self.qr_canvas.winfo_height())
+        self.qr_canvas.delete("all")
+        if self.generated_image is None:
+            self.generated_preview = None
+            self.qr_canvas.create_text(
+                width // 2, height // 2,
+                text="Generated QR code will appear here", fill="#334155",
+            )
+            return
+
+        preview = self.generated_image.copy()
+        preview.thumbnail(
+            (max(1, width - 2), max(1, height - 2)), Image.Resampling.NEAREST,
+        )
+        self.generated_preview = ImageTk.PhotoImage(preview)
+        # Anchor to the *top* to remove the oversized gap below the buttons.
+        self.qr_canvas.create_image(
+            width // 2, 0, anchor="n", image=self.generated_preview,
+        )
 
     def generate(self, event=None):
         content = self.text.get("1.0", "end-1c")
@@ -213,11 +233,7 @@ class QRCodeApp:
             return "break"
         try:
             self.generated_image = create_qr_image(content)
-            preview = self.generated_image.copy()
-            preview.thumbnail((500, 500))
-            self.generated_preview = ImageTk.PhotoImage(preview)
-            self.qr_label.configure(image=self.generated_preview, text="")
-            self.status.configure(text=f"Generated QR — {len(content)} characters")
+            self.update_qr_preview()
         except Exception as exc:
             messagebox.showerror("QR generation failed", str(exc))
         return "break"
@@ -234,7 +250,6 @@ class QRCodeApp:
         if path:
             try:
                 self.generated_image.save(path, format="PNG")
-                self.status.configure(text=f"Saved PNG: {path}")
             except OSError as exc:
                 messagebox.showerror("Unable to save", str(exc))
 
@@ -242,8 +257,7 @@ class QRCodeApp:
         self.text.delete("1.0", "end")
         self.generated_image = None
         self.generated_preview = None
-        self.qr_label.configure(image="", text="Generated QR code will appear here")
-        self.status.configure(text="Ctrl+Enter to generate")
+        self.update_qr_preview()
         self.text.focus_set()
 
     def refresh_cameras(self):
@@ -286,8 +300,10 @@ class QRCodeApp:
         self.camera_button.configure(text="Stop Camera")
         w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps_info = f" • {fps:g} FPS reported" if fps and fps > 0 else ""
         self.camera_status.configure(
-            text=f"Camera {device} • {w}×{h} • scanning full-resolution frames"
+            text=f"Camera {device} • {w}×{h}{fps_info} • scanning full-resolution frames"
         )
         self.update_camera()
 
@@ -348,8 +364,7 @@ class QRCodeApp:
         # Only the small preview is resized. QR decoding uses the unscaled
         # original frame, on a worker thread so the UI stays responsive.
         self.show_camera_frame(frame)
-        if self.check_decode_result():
-            return
+        self.check_decode_result()
         now = time.monotonic()
         if self.decode_future is None and now - self.last_decode_at >= 0.22:
             self.decode_session = self.session_id
@@ -372,9 +387,6 @@ class QRCodeApp:
             return False
         if text and text != self.last_scanned:
             self.accept_scan(text)
-            if self.stop_after_scan.get():
-                self.stop_camera(message="QR decoded successfully.")
-                return True
         return False
 
     def show_camera_frame(self, frame):
@@ -391,6 +403,9 @@ class QRCodeApp:
         self.scan_result.delete("1.0", "end")
         self.scan_result.insert("1.0", value)
         self.camera_status.configure(text="QR code decoded successfully.")
+        self.scan_timestamp.configure(
+            text=f"Last scan: {datetime.now().astimezone():%Y-%m-%d %H:%M:%S %Z}"
+        )
         self.root.bell()
 
     def scan_image(self):
@@ -454,7 +469,6 @@ class QRCodeApp:
             self.text.delete("1.0", "end")
             self.text.insert("1.0", value)
             self.text.focus_set()
-            self.status.configure(text="Scanner result copied to input.")
 
     def on_close(self):
         self.closing = True
