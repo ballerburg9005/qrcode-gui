@@ -2,7 +2,7 @@
 Name=QR Code Studio
 Comment=Create QR codes and scan dense codes offline
 Exec=qrcode-gui
-Icon=${SNAP}/meta/gui/qrcode-gui.svg
+Icon=${SNAP}/meta/gui/qrcode-gui.png
 Terminal=false
 Type=Application
 Categories=Graphics;Utility;
