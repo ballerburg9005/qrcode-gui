@@ -20,7 +20,9 @@ jobs:
       - name: Compile and test
         run: |
           python -m compileall -q src
+          bash -n install.sh
           python -m unittest discover -s tests -v
+          python -c 'import cv2; image = cv2.imread("snap/gui/qrcode-gui.png"); assert image is not None; assert cv2.QRCodeDetector().detectAndDecode(image)[0] == "qrcode-gui"'
 
   snap:
     runs-on: ubuntu-24.04

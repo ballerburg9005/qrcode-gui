@@ -6,9 +6,9 @@ description: |
   Generate and save QR codes, scan QR codes with a Linux webcam or image,
   and copy the decoded results. Includes a high-resolution camera mode and
   a robust ZXing-C++ decoder. Works without accounts or cloud services.
-icon: snap/gui/qrcode-gui.svg
+icon: snap/gui/qrcode-gui.png
 website: https://github.com/ballerburg9005/qrcode-gui
-grade: devel
+grade: stable
 confinement: strict
 
 apps:

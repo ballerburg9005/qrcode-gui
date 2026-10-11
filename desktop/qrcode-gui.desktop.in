@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=QR Code Studio
+Comment=Generate and scan QR codes offline
+Exec=@EXEC@
+TryExec=@TRYEXEC@
+Path=@APP_DIR@
+Icon=@ICON@
+Terminal=false
+StartupNotify=true
+Categories=Graphics;Utility;
+Keywords=QR;Barcode;Camera;Scanner;
