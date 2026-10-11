@@ -25,6 +25,22 @@ class QRCodeApp:
         root.title("QR Code Studio")
         root.geometry("1240x820")
         root.minsize(900, 630)
+        self.window_icon = None
+        # Use the same QR icon for the window, application menu and Snap.
+        locations = []
+        if os.environ.get("SNAP"):
+            locations.append(os.path.join(os.environ["SNAP"], "meta/gui/qrcode-gui.png"))
+        locations.append(os.path.join(os.getcwd(), "snap/gui/qrcode-gui.png"))
+        locations.append(os.path.join(os.path.expanduser("~"), "qrcode-gui/snap/gui/qrcode-gui.png"))
+        for icon_path in locations:
+            if not os.path.isfile(icon_path):
+                continue
+            try:
+                self.window_icon = tk.PhotoImage(file=icon_path)
+                root.iconphoto(True, self.window_icon)
+                break
+            except tk.TclError:
+                continue
         self.install_style()
         self.generated_image = None
         self.generated_preview = None
