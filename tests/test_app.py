@@ -91,5 +91,43 @@ class AppTests(unittest.TestCase):
         self.assertTrue(app.camera_running)
 
 
+    def test_camera_selection_restarts_active_camera_without_resetting_scan(self):
+        app = QRCodeApp.__new__(QRCodeApp)
+        app.camera_running = True
+        app.stop_camera = Mock()
+        app.start_camera = Mock()
+        app.apply_camera_selection()
+        app.stop_camera.assert_called_once_with(
+            message="Switching camera settings…", clear_preview=True,
+        )
+        app.start_camera.assert_called_once_with(retry=True)
+
+    def test_camera_selection_does_not_start_stopped_camera(self):
+        app = QRCodeApp.__new__(QRCodeApp)
+        app.camera_running = False
+        app.stop_camera = Mock()
+        app.start_camera = Mock()
+        app.apply_camera_selection()
+        app.stop_camera.assert_not_called()
+        app.start_camera.assert_not_called()
+
+    def test_save_dialog_suggests_timestamped_filename_in_pictures(self):
+        from datetime import datetime
+
+        app = QRCodeApp.__new__(QRCodeApp)
+        app.generated_image = Mock()
+        with patch("qrcode_gui.app.default_save_directory", return_value="/home/demo/Pictures"), \
+             patch("qrcode_gui.app.datetime") as clock, \
+             patch("qrcode_gui.app.filedialog.asksaveasfilename", return_value="") as dialog:
+            clock.now.return_value = datetime(2026, 12, 24, 18, 0)
+            app.save_png()
+        self.assertEqual(
+            dialog.call_args.kwargs["initialfile"], "qrcode-2026-12-24--18-00.png"
+        )
+        self.assertEqual(
+            dialog.call_args.kwargs["initialdir"], "/home/demo/Pictures"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
