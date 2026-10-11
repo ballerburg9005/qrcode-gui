@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 
 from .camera import RESOLUTIONS, choices, open_camera
+from .paths import default_save_directory
 from .decoder import decode_qr
 from .qr import create_qr_image
 
@@ -178,18 +179,21 @@ class QRCodeApp:
             state="readonly", width=16
         )
         self.camera_selector.pack(side="left", padx=4)
+        self.camera_selector.bind("<<ComboboxSelected>>", self.apply_camera_selection)
         ttk.Button(row, text="↻", width=3, command=self.refresh_cameras).pack(
             side="left", padx=4
         )
 
-        # Resolution changes take effect when starting/restarting the camera.
+        # Resolution changes restart a running camera automatically.
         options_row = ttk.Frame(right)
         options_row.grid(row=6, column=0, sticky="ew", pady=(4, 0))
         ttk.Label(options_row, text="Capture quality:").pack(side="left", padx=(0, 5))
-        ttk.Combobox(
+        self.resolution_selector = ttk.Combobox(
             options_row, textvariable=self.selected_resolution,
             values=list(RESOLUTIONS), state="readonly", width=20,
-        ).pack(side="left", padx=(0, 10))
+        )
+        self.resolution_selector.pack(side="left", padx=(0, 10))
+        self.resolution_selector.bind("<<ComboboxSelected>>", self.apply_camera_selection)
         self.camera_label = ttk.Label(
             right, text="Press Start Camera or Scan Image", anchor="center"
         )
@@ -245,7 +249,9 @@ class QRCodeApp:
             return
         path = filedialog.asksaveasfilename(
             title="Save QR code", defaultextension=".png",
-            filetypes=[("PNG image", "*.png")], initialfile="qrcode.png",
+            filetypes=[("PNG image", "*.png")],
+            initialdir=default_save_directory(),
+            initialfile=f"qrcode-{datetime.now():%Y-%m-%d--%H-%M}.png",
         )
         if path:
             try:
@@ -265,6 +271,13 @@ class QRCodeApp:
         options = choices()
         self.camera_selector.configure(values=options)
         self.selected_camera.set(current if current in options else "Automatic")
+
+    def apply_camera_selection(self, event=None):
+        """Restart a running camera immediately with the new selection."""
+        if self.camera_running:
+            self.stop_camera(message="Switching camera settings…", clear_preview=True)
+            # Keep the last scan during a manual capture-mode change.
+            self.start_camera(retry=True)
 
     def toggle_camera(self):
         if self.camera_running:
